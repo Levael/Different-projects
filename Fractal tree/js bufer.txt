@@ -1,0 +1,87 @@
+var canvas = document.getElementById("canvas");
+var ctx = canvas.getContext("2d");	// context
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// variables
+var padding = 10,
+		branch_length = Math.floor(canvas.height / 4.5 - padding * 2),	// чтобы дерево поместилось в высоту целиком
+		first_point = [Math.floor(canvas.width / 2), canvas.height - padding],
+		second_point = [first_point[0], first_point[1] - branch_length],
+		delta_angle = 25,
+		nodes = [],		// nodes = [node: [[new_x, new_y], current_angle, current_braanch_length] ];
+		levels = 14,
+		nodes_number = (2**(levels + 1)) - 1;
+
+// backround tree color
+var diagonal = Math.sqrt((canvas.height/2)**2 + (canvas.width/2)**2);
+var grad = ctx.createRadialGradient(first_point[0], first_point[1], 0, first_point[0], first_point[1], diagonal);	// radial gradient
+grad.addColorStop('0', '#051B31');	// dark
+grad.addColorStop('1', '#296EB2');	// bright
+
+// functions
+function DrawLine (from, to, level) {
+	let line_width = 10 * (1 - (level / 10));
+	ctx.strokeStyle = grad;
+	ctx.lineWidth = line_width;
+
+	ctx.beginPath();
+	ctx.moveTo(from[0], from[1]);
+	ctx.lineTo(to[0], to[1]);
+	ctx.stroke();
+}
+
+function GetLog(x, y) {
+	return Math.floor(Math.log(y) / Math.log(x));
+}
+
+function GetNewPoint (x, y, angle, branch_length) {
+	let new_x = x + (Math.cos((angle * Math.PI) / 180) * branch_length);
+	let new_y = y - (Math.sin((angle * Math.PI) / 180) * branch_length);
+	return [new_x, new_y];
+}
+
+function DrawTrunk (nodes, branch_length, first_point, second_point) {		// trunk = ствол
+	let start = [first_point[0], first_point[1]];
+	let end = [second_point[0] + Math.floor(ctx.lineWidth / 2), second_point[1]];
+	nodes.push([
+		[end[0], end[1]],
+		90,
+		branch_length
+	]);		// 90 = start angle
+	DrawLine(start, end, 0);
+}
+
+function DrawBranches (nodes, nodes_number, delta_angle) {
+	let start, old_angle, branch_length, left_branch, right_branch, level;
+	for (let i = 0; i < (nodes_number - 2) / 2; i++) {
+		start = [nodes[i][0][0], nodes[i][0][1]];
+		old_angle = nodes[i][1];
+		branch_length = nodes[i][2] * 0.8;
+
+		left_branch = [
+			GetNewPoint(start[0], start[1], old_angle + delta_angle, branch_length), 	// [new_x, nex_y]
+			old_angle + delta_angle, 																									// angle
+			branch_length																															// new_branch_length
+		];
+
+		right_branch = [
+			GetNewPoint(start[0], start[1], old_angle - delta_angle, branch_length),
+			old_angle - delta_angle,
+			branch_length
+		];
+
+		level = GetLog(2, i + 1);
+
+
+		nodes.push(left_branch);
+		nodes.push(right_branch);
+		DrawLine(start, left_branch[0], level);
+		DrawLine(start, right_branch[0], level);
+	}
+}
+
+// start here
+DrawTrunk(nodes, branch_length, first_point, second_point);
+DrawBranches(nodes, nodes_number, delta_angle);

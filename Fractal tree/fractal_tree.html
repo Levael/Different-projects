@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset = "UTF-8">
+	<title>Canvas</title>
+	<link rel = "stylesheet" href = "fractal_tree.css">
+</head>
+<body>
+
+<div id="inputs">
+	<div class="sliders">
+		<input type="checkbox" id="AutoOptimalSize">
+		<div class="names">Auto optimal tree size</div>
+	</div>
+
+	<div class="sliders">
+		<input type="range" id="branch_length">
+		<div class="names">branch length:</div>
+		<div class="values" id="branch_length_value"></div>
+	</div>
+
+	<div class="sliders">
+		<input type="range" id="delta_angle">
+		<div class="names">delta angle:</div>
+		<div class="values" id="delta_angle_value"></div>
+	</div>
+
+	<div class="sliders">
+		<input type="range" id="levels">
+		<div class="names">levels:</div>
+		<div class="values" id="levels_value"></div>
+	</div>
+
+	<div class="sliders">
+		<input type="range" id="branch_ratio">
+		<div class="names">branch ratio:</div>
+		<div class="values" id="branch_ratio_value"></div>
+	</div>
+
+	<div class="sliders">
+		<input type="range" id="padding">
+		<div class="names">padding:</div>
+		<div class="values" id="padding_value"></div>
+	</div>
+</div>
+
+<canvas id = "canvas"></canvas>
+<script defer src = "fractal_tree.js"></script>
+
+</body>
+</html>
