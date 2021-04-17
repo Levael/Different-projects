@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset = "UTF-8">
+	<title>Fractal tree v2</title>
+	<style>
+		body {
+			margin: 0;
+		}
+
+		canvas {
+			display: block;
+			position: absolute;
+			z-index: 1;
+		}
+
+		#inputs {
+			/* display: block; */
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			z-index: 2;
+		}
+
+		.sliders {
+			display: block;
+			width: auto;
+			height: auto;
+			clear: both;
+		}
+
+		input {
+			float: left;
+			margin-right: 5px;
+		}
+
+		.values {
+			float: right;
+			color: white;
+		}
+
+		.names {
+			width: auto;
+			float: left;
+			margin-right: 5px;
+			color: white;
+		}		
+	</style>
+</head>
+<body>
+
+<div id="inputs">
+	<div class="sliders">
+		<input type="checkbox" id="AutoOptimalSize">
+		<div class="names">Auto optimal tree size</div>
+	</div>
+
+	<div class="sliders">
+		<input type="range" id="branch_length">
+		<div class="names">branch length:</div>
+		<div class="values" id="branch_length_value"></div>
+	</div>
+
+	<div class="sliders">
+		<input type="range" id="delta_angle">
+		<div class="names">delta angle:</div>
+		<div class="values" id="delta_angle_value"></div>
+	</div>
+
+	<div class="sliders">
+		<input type="range" id="levels">
+		<div class="names">levels:</div>
+		<div class="values" id="levels_value"></div>
+	</div>
+
+	<div class="sliders">
+		<input type="range" id="branch_ratio">
+		<div class="names">branch ratio:</div>
+		<div class="values" id="branch_ratio_value"></div>
+	</div>
+
+	<div class="sliders">
+		<input type="range" id="padding">
+		<div class="names">padding:</div>
+		<div class="values" id="padding_value"></div>
+	</div>
+</div>
+
+<script>
+
+	class FractalTree {
+
+		/*
+			ПАРАМЕТРЫ:
+
+			высота ствола
+			угол наклона ствола
+
+			угол наклона левой ветви
+			угол наклона правой ветви
+			коэффицент укорочения длины левой ветви
+			коэффицент укорочения длины правой ветви
+
+		*/
+
+		// LOGIC and CALCULATIONS ======================================================================
+
+		init () {
+			this.mode = 'random';
+
+			this.createCanvas();
+			this.setCanvasSize();
+
+			this.lines = [];
+			this.loadSettings();
+			// this.settings = this.getSettings();
+			this.updateFrame();
+
+
+			// this.drawSquare(50, 50, 50, 'red');
+		}
+
+		// drawSquare (x, y, side, color) {
+		// 	this.ctx.beginPath();
+			
+		// 	this.ctx.rect(x - side/2, y - side/2, side, side);
+		// 	this.ctx.fillStyle = color || 'black';
+		// 	this.ctx.fill();
+		// }
+
+		updateFrame () {
+			this.recalculateTree();
+			this.displaySlidersValues();
+
+			this.clearCanvas();
+			this.drawTree();
+		}
+
+		recalculateTree () {
+			this.lines = [];	// clear array (!!! если закоментить, будет охуенный эффект)
+			this.settings = this.getSettings();
+
+			if (this.auto_size_checkbox.checked) {
+				this.slider_branch_length.value = this.getOptimalBranchLength(
+					this.settings.Δangle,
+					this.settings.branch_ratio * 100,
+					this.settings.levels,
+					this.settings.padding
+				);
+			}
+
+			this.recalcTrunk();
+			this.recalcBrunches();
+
+			// console.log(this.lines);
+		}
+
+		recalcTrunk () {
+			
+
+			let start = {
+				x: Math.floor(this.w / 2) + 50,
+				y: this.h - this.settings.padding,
+			};
+
+			this.lines.push({
+				'start': {
+					x: start.x,
+					y: start.y,
+				},
+				'end': {
+					x: start.x,
+					y: start.y - this.settings.branch_len,
+				},
+				'angle': 			90,
+				'branch_length': 	this.settings.branch_len,
+				'level': 			0,
+			});
+		}
+
+		recalcBrunches () {
+			let old_angle,
+				new_angle = this.randomNumber(this.settings.Δangle*0.7, this.settings.Δangle*1.3),
+				left_branch,
+				right_branch,
+				level,
+				new_branch_length;
+
+			for (let i = 0; i < (this.settings.nodes_number - 2) / 2; i++) {
+				// console.log('start ineration');
+				if (this.lines[i] == undefined) break;
+				old_angle = this.lines[i].angle;
+				new_branch_length = Math.round(this.lines[i].branch_length * this.settings.branch_ratio);
+				new_branch_length = this.randomNumber(new_branch_length*0.7, new_branch_length*1.3);
+				level = this.getLog(2, i + 1);		// вычисление глубины узла через логарифм -- Math.floor(log (from 2) to (index + 1))
+
+				let start = {
+					x: this.lines[i].end.x,
+					y: this.lines[i].end.y,
+				};
+
+				left_branch = {
+					'start': {
+						x: start.x,
+						y: start.y,
+					},
+					'end': {
+						x: this.getNewX(start.x, old_angle + new_angle, new_branch_length),
+						y: this.getNewY(start.y, old_angle + new_angle, new_branch_length),
+					},
+					'angle': 			old_angle + new_angle,
+					'branch_length': 	new_branch_length,
+					'level': 			level,
+				};
+
+				right_branch = {
+					'start': {
+						x: start.x,
+						y: start.y,
+					},
+					'end': {
+						x: this.getNewX(start.x, old_angle - new_angle, new_branch_length),
+						y: this.getNewY(start.y, old_angle - new_angle, new_branch_length),
+					},
+					'angle': 			old_angle - new_angle,
+					'branch_length': 	new_branch_length,
+					'level': 			level,
+				};
+				
+				if (this.randomNumber(0, 1.5)) this.lines.push(left_branch);
+				if (this.randomNumber(0, 1.5)) this.lines.push(right_branch);
+
+				// console.log('end ineration');
+			}
+		}
+
+		getLog (x, y) {
+			return Math.floor(Math.log(y) / Math.log(x));
+		}
+
+		getNewX (x, angle, branch_length) {
+			return x + (Math.cos((angle * Math.PI) / 180) * branch_length);
+		}
+
+		getNewY (y, angle, branch_length) {
+			return y - (Math.sin((angle * Math.PI) / 180) * branch_length);
+		}
+
+		getOptimalBranchLength (Δangle,	branch_ratio, levels, padding) {
+			// console.log('Δangle: ' + Δangle + '<br>' +
+			// 						'branch_ratio: ' + branch_ratio + '<br>' +
+			// 						'canvas_padding: ' + canvas_padding + '<br>' +
+			// 						'levels_quantity' + levels_quantity);
+			/* При первом запуске программы расчитывает такую длину стартовой ветви,
+				 чтобы дерево идеально поместилось на экране. Для этого нужно заранее знать:
+					- общий угол отклонения
+				 	- коэффицент уменьшения длины ветвей
+				 	- кол-во уровней
+				 	- отступ внутри холста, чтобы дерево не касалось краёв (для красоты)
+
+				Присутствует небольшая погрешность,
+				пердположительно из-за большого кол-ва операций с дробными числами,
+				поэтому ветви дерева вылазят за границу на пару пикселей.
+				Если сделать относительно большой отступ (>= 10px), погрешности заметно не будет.
+			*/
+
+			/* brr = branch_ratio / 100,	// чисто для оптимизации, чтобы каждый раз не возводить в степень
+				 brr_n = brr;	// чисто для оптимизации, чтобы каждый раз не возводить в степень (n = "энное")
+				 for (let i = 0; i <= levels_quantity; i++) {
+					 brr_progression += brr_n;	// сумма прогрессии
+					 brr_n *= brr;	// получение след члена последовательности
+			 }	// оптимизированнее, но практически не читаем
+			 */
+
+			let max_allowed_height = this.h - padding * 2,	// высота "уже обрезанного" хослта
+				Δangle_cos = Math.cos((Δangle * Math.PI) / 180),	// по умолчанию косинус принимает радианы, поэтому требуется такое преобразование в градусы
+				brr_progression = 0;	// (brr + brr^2 + brr^3 ...)
+				for (let i = 1; i <= levels + 1; i++) {	// +1 -- это ствол, т.к. уровни начитаются с веток
+					brr_progression += (branch_ratio / 100) ** i;
+				}
+
+			return Math.floor(max_allowed_height / (1 + Δangle_cos * brr_progression));	// Optimal Branch Length
+
+			// return 50;
+		}
+
+		randomNumber (min, max) {
+		    return Math.round(Math.random() * (max - min) + min);
+		}
+
+		// DRAWING ======================================================================
+
+		createCanvas () {
+			this.canvas = document.createElement('canvas');
+			this.canvas.style.background = '#000011';
+			this.ctx = this.canvas.getContext('2d');
+			document.body.appendChild(this.canvas);
+		}
+
+		setCanvasSize () {
+			this.w = this.canvas.width  = innerWidth;
+			this.h = this.canvas.height = innerHeight;
+		}
+
+		clearCanvas () {
+			this.ctx.clearRect(0, 0, this.w, this.h);
+		}
+
+		drawLine (from, to, level) {
+			let line_width = 10 * (1 - (level / 10));
+			this.ctx.strokeStyle = 'white';
+			this.ctx.lineWidth = line_width;
+			// this.ctx.lineWidth = line_width;
+
+			this.ctx.beginPath();
+			this.ctx.moveTo(from.x, from.y);
+			this.ctx.lineTo(to.x, to.y);
+			this.ctx.stroke();
+		}
+
+		drawTree () {
+			this.lines.forEach((item, i, arr) => {
+				this.drawLine(arr[i].start, arr[i].end, arr[i].level);
+			});			
+		}
+
+		// SLIDERS ==========================================================
+
+		loadSettings () {
+			// объявление самих ползунков
+			this.auto_size_checkbox 	= document.getElementById('AutoOptimalSize');
+			this.slider_branch_length 	= document.getElementById('branch_length');
+			this.slider_Δangle 			= document.getElementById('delta_angle');
+			this.slider_levels 			= document.getElementById('levels');
+			this.slider_branch_ratio 	= document.getElementById('branch_ratio');
+			this.slider_padding 		= document.getElementById('padding');
+
+			// навешивание обработчика событий на все ползунки
+			this.auto_size_checkbox.addEventListener('input', 	() => {this.updateTreeWithAutoSize()});
+			this.slider_branch_length.addEventListener('input', () => {this.disactivateAutoBranchSize()});
+			// (сверху)(важно: должно стоять перед другими обработчиками этого элемента)
+			// (сверху: при ручном изменении длины ветвей авторазмер отключается)
+			this.slider_branch_length.addEventListener('input', () => {this.updateFrame()});		
+			this.slider_Δangle.addEventListener('input', 		() => {this.updateFrame()});
+			this.slider_levels.addEventListener('input', 		() => {this.updateFrame()});
+			this.slider_branch_ratio.addEventListener('input', 	() => {this.updateFrame()});
+			this.slider_padding.addEventListener('input', 		() => {this.updateFrame()});
+
+			// объявление контейнеров со значениями из ползунков
+			this.inner_branch_length 	= document.getElementById('branch_length_value');
+			this.inner_Δangle 			= document.getElementById('delta_angle_value');
+			this.inner_levels 			= document.getElementById('levels_value');
+			this.inner_branch_ratio 	= document.getElementById('branch_ratio_value');
+			this.inner_padding 			= document.getElementById('padding_value');
+
+			// установка значений по умолчанию
+			this.slider_Δangle.min 			= 0; 		this.slider_Δangle.max = 180; 			/**/ 	this.slider_Δangle.value 		= 20;
+			this.slider_levels.min 			= 0; 		this.slider_levels.max = 20; 			/**/ 	this.slider_levels.value 		= 10;
+			this.slider_branch_ratio.min 	= 0; 		this.slider_branch_ratio.max = 100; 	/**/ 	this.slider_branch_ratio.value 	= 86;
+			this.slider_padding.min 		= 0; 		this.slider_padding.max = 100; 			/**/ 	this.slider_padding.value 		= 5;
+			this.auto_size_checkbox.checked = false;		// включен по умолчанию
+
+
+			this.slider_branch_length.max = this.getOptimalBranchLength(
+				+this.slider_Δangle.value,
+				+this.slider_branch_ratio.value,
+				+this.slider_levels.value,
+				+this.slider_padding.value
+			) * 0.95;
+
+			this.slider_branch_length.min = this.slider_branch_length.max / 2;
+			this.slider_branch_length.value = 120;
+			
+			if (this.mode == 'random') {
+				this.slider_branch_length.value = this.randomNumber(+this.slider_branch_length.max, +this.slider_branch_length.min);
+				this.slider_levels.value = Math.round(this.slider_branch_length.value / 10);
+			}
+
+
+			// плюсы ниже для перевода данных в целые чила, т.к. 'value' возвращает строку
+			// this.slider_branch_length.value = this.getOptimalBranchLength(
+			// 	+this.slider_Δangle.value,
+			// 	+this.slider_branch_ratio.value,
+			// 	+this.slider_levels.value,
+			// 	+this.slider_padding.value
+			// );
+
+			
+
+			this.settings = this.getSettings();
+		}
+
+		getSettings () {
+			return {
+				branch_len: 	Number(this.slider_branch_length.value),
+				levels: 		Number(this.slider_levels.value),
+				Δangle: 		Number(this.slider_Δangle.value),
+				branch_ratio: 	Number(this.slider_branch_ratio.value) / 100,
+				padding: 		Number(this.slider_padding.value),
+
+				nodes_number: (Math.pow(2, (Number(this.slider_levels.value) + 1)) - 1),
+			};
+		}
+
+		disactivateAutoBranchSize () {
+			this.auto_size_checkbox.checked = false;
+		}
+
+		updateTreeWithAutoSize () {
+			// this.updateFrame();
+		}
+
+		displaySlidersValues () {
+			this.inner_branch_length.innerHTML 	= this.slider_branch_length.value;
+			this.inner_Δangle.innerHTML 		= this.slider_Δangle.value;
+			this.inner_levels.innerHTML 		= this.slider_levels.value;
+			this.inner_branch_ratio.innerHTML 	= this.slider_branch_ratio.value;
+			this.inner_padding.innerHTML 		= this.slider_padding.value;
+		}		
+
+	}
+
+	window.onload = () => {
+		new FractalTree().init();
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+</script>
+
+</body>
+</html>
