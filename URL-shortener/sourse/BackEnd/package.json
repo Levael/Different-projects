@@ -1,0 +1,21 @@
+{
+  "name": "url-shortener",
+  "version": "1.0.0",
+  "main": "https_server.js",
+  "scripts": {
+    "http_pure": "node code/http_server_pure.js",
+    "https_express": "nodemon code/https_server_express.js"
+  },
+  "author": "Levael",
+  "license": "ISC",
+  "dependencies": {
+    "ejs": "^3.1.6",
+    "express": "^4.17.1",
+    "helmet": "^4.5.0",
+    "mongoose": "^5.12.5",
+    "shortid": "^2.2.16"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  }
+}
