@@ -50,7 +50,7 @@ app.use(express.urlencoded({extended: false}));
 const db_schema = new mongoose.Schema({
     full        : {type: String, required: true},
     short       : {type: String, required: true, default: shortener.generate},
-    live_time   : {type: Number, required: true, default: 24},  // hours
+    live_time   : {type: Number, required: true, default: 1},  // minutes
     created_on  : {type: Date,   required: true, default: Date.now()},
 });
 
@@ -76,20 +76,21 @@ async function InspirationTimer () {
 
     let urls = await local_db.find(),
         date_now = Date.now(),
-        hour = 1000 * 60 * 60;
+        minute = 1000 * 60;
 
+    if (urls.length == 0) return;
+
+    // update url live expiration time
     urls.forEach((url) => {
-        url.live_time -= Math.floor((date_now - url.created_on) / hour);
+        url.live_time -= Math.floor((date_now - url.created_on) / minute);
         url.save();
+    });
 
-        if (url.live_time <= 0) {
-            // deleting
-            // urls.url = undefined;
-            // local_db.findOneAndDelete({ full: 'http://google.com' }, function (err) {
-            //   if(err) console.log(err);
-            //   console.log("Successful deletion");
-            // });
-        }
+    // searching in full db any expired url
+    local_db.deleteMany({live_time: {$lte: 0}}, function (err) {
+        // SOMEWHERE HERE IS A BUG
+        if(err) console.log(err);
+        console.log('what');
     });
 }
 
@@ -109,4 +110,4 @@ app.get('/:short_url', async (req, res) => {
     res.redirect(url.full);
 });
 
-let TimeChecker = setInterval(InspirationTimer, 60000);     // every minute
+let TimeChecker = setInterval(InspirationTimer, 5000);     // every minute
